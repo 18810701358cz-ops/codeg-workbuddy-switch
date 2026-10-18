@@ -767,15 +767,7 @@ async function performSwitch(accountId, reason = "manual") {
   const from = currentCliAccount();
   let tokens = { accessToken: row.access_token, refreshToken: row.refresh_token };
 
-  // Refresh token if needed
-  if (row.refresh_token) {
-    try {
-      tokens = await refreshAccountTokens(row);
-    } catch (err) {
-      log(`refresh on switch failed for ${row.email}:`, err.message);
-    }
-  }
-
+  // Instant offline switch: Write tokens directly without blocking network calls
   const backupPath = writeCliAuthFile(row, tokens);
   const now = Date.now();
 
@@ -1089,6 +1081,7 @@ const server = http.createServer(async (req, res) => {
     if (!authorized(req)) {
       return send(res, 401, { error: "unauthorized" });
     }
+    log(`${req.method} ${url.pathname}`);
 
     if (req.method === "GET" && url.pathname === "/api/accounts") {
       // Auto import current CLI account if not already in store
