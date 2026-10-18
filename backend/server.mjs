@@ -567,7 +567,9 @@ function currentCliAccount() {
 }
 
 function upsertAccount(payload, options = {}) {
-  const email = (payload.email || payload.nickname || "").trim();
+  const rawEmail = payload.email || payload.nickname || "";
+  const email = String(rawEmail).replace(/[`'"]/g, "").trim();
+  const nickname = String(payload.nickname || email).replace(/[`'"]/g, "").trim();
   const uid = payload.uid || null;
   if (!email && !uid) throw new Error("缺少账号信息 (email 或 uid)");
   const id = payload.id || accountIdFrom(uid, email);
@@ -1019,6 +1021,52 @@ function openPath(target) {
   child.unref();
 }
 
+
+function scanAndImportLocalAccounts() {
+  const authDir = path.dirname(AUTH_PATH);
+  if (!fs.existsSync(authDir)) return 0;
+  let count = 0;
+  try {
+    const files = fs.readdirSync(authDir);
+    for (const file of files) {
+      if (file.endsWith(".logged-out")) continue;
+      if (!file.includes("coding-copilot") && !file.includes("workbuddy")) continue;
+      try {
+        const fullPath = path.join(authDir, file);
+        const data = readJson(fullPath);
+        if (!data) continue;
+        const acc = data.account || (Array.isArray(data.accounts) && data.accounts[0]);
+        const auth = data.auth;
+        const rawEmail = acc?.email || acc?.nickname;
+        const uid = acc?.uid;
+        const token = typeof auth?.accessToken === "string" ? auth.accessToken : null;
+        const refreshToken = typeof auth?.refreshToken === "string" ? auth.refreshToken : null;
+        if (!token && !refreshToken) continue;
+        if (!rawEmail && !uid) continue;
+
+        const email = String(rawEmail || "").replace(/[`\'\"]/g, "").trim();
+        const nickname = acc?.nickname ? String(acc.nickname).replace(/[`\'\"]/g, "").trim() : email;
+        const domain = auth?.domain || (file.includes("-ai") ? "www.codebuddy.ai" : "copilot.tencent.com");
+
+        upsertAccount({
+          uid,
+          email,
+          nickname,
+          accessToken: token || refreshToken,
+          refreshToken: refreshToken || token,
+          tokenType: auth?.tokenType || "Bearer",
+          domain,
+          region: domain.includes("codebuddy.ai") ? "overseas" : "domestic",
+          expiresAt: auth?.expiresAt || null,
+          refreshExpiresAt: auth?.refreshExpiresAt || null,
+        }, { source: "local_scan" });
+        count += 1;
+      } catch {}
+    }
+  } catch {}
+  return count;
+}
+
 function openExternal(targetUrl) {
   const parsed = new URL(targetUrl);
   const allowed = ["codebuddy.ai", "www.codebuddy.ai", "tencent.com", "copilot.tencent.com", "accounts.google.com", "github.com"];
@@ -1109,6 +1157,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && url.pathname === "/api/login/cancel") {
       if (activeLogin) activeLogin.status = "cancelled";
       return send(res, 200, { ok: true });
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/import-local") {
+      const count = scanAndImportLocalAccounts();
+      return send(res, 200, { ok: true, count, accounts: listAccounts() });
     }
 
     if (req.method === "POST" && url.pathname === "/api/import-token") {

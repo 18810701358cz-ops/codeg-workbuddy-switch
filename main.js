@@ -158,9 +158,9 @@ function currentCli() {
 }
 
 async function waitForSwitch(switchId) {
-  const deadline = Date.now() + 180_000;
+  const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
-    await sleep(1500);
+    await sleep(350);
     let data;
     try {
       data = await api("/api/switch-status");
@@ -168,8 +168,12 @@ async function waitForSwitch(switchId) {
       continue;
     }
     const cur = data?.switch;
-    if (!cur || cur.id !== switchId) return { status: "unknown" };
-    if (cur.status !== "running") return cur;
+    if (!cur) return { status: "unknown" };
+    if (cur.id === switchId) {
+      if (cur.status !== "running") return cur;
+    } else {
+      return { status: "success" };
+    }
   }
   throw new Error("切换超时");
 }
@@ -237,6 +241,23 @@ function showAddModal() {
   // Tab switch: Overseas vs Domestic vs Paste Token
   const desc = el("div", "wbs-sub", "选择添加方式：支持海外版（Google / GitHub 授权）或直接粘贴 Token。");
   body.appendChild(desc);
+
+  const scanBtn = el("button", "wbs-btn primary", "⚡ 一键扫描导入本机已有账号 (海外版/国内版)");
+  scanBtn.style.width = "100%";
+  scanBtn.style.marginBottom = "12px";
+  scanBtn.addEventListener("click", async () => {
+    try {
+      statusBox.textContent = "正在扫描本机 CodeBuddy / WorkBuddy 凭据...";
+      const res = await api("/api/import-local", { method: "POST" });
+      plugin.ctx.notify(`成功同步 ${res.count || 0} 个本地账号`, "success");
+      overlay.remove();
+      await refresh();
+    } catch (err) {
+      statusBox.textContent = `扫描失败：${err.message}`;
+      statusBox.style.color = "#dc2626";
+    }
+  });
+  body.appendChild(scanBtn);
 
   const btnRow = el("div", "wbs-actions");
   const overseasBtn = el("button", "wbs-btn primary", "🌐 登录海外版 (codebuddy.ai)");
