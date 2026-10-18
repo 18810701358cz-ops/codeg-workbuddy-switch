@@ -1,0 +1,25 @@
+# Documentation exclusion
+docs/
+doc/
+*.docx
+*.pdf
+
+# Runtime and local data
+node_modules/
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.log
+npm-debug.log*
+
+# Environment and local config
+state.json
+.env
+.env.*
+*.local
+
+# OS files
+.DS_Store
+Thumbs.db

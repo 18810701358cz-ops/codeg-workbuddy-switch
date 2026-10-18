@@ -1,0 +1,13 @@
+{
+  "name": "codeg-workbuddy-switch",
+  "version": "1.0.0",
+  "description": "CodeBuddy multi-account manager & CLI auto-rotator plugin for Codeg Plugin Host v2, supporting overseas/domestic accounts and expiring points rotation",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "test": "node --test test/backend.test.mjs test/frontend.test.mjs"
+  }
+}

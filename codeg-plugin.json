@@ -1,0 +1,74 @@
+{
+  "id": "workbuddy-switch",
+  "name": "CodeBuddy 自动换号器",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "engines": { "pluginHost": ">=1.0.0 <2.0.0" },
+  "description": "专为 CodeBuddy / WorkBuddy 打造的多账号管理与自动换号器。原生支持海外版（codebuddy.ai / Google / GitHub 授权）与国内版，支持 CodeBuddy CLI 自动轮换（临期积分优先）、配额监控、Token 保活、账号池导入导出与进程接管。",
+  "author": "codeg-community",
+  "category": "utility",
+  "permissions": ["ui", "process"],
+  "main": "main.js",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "title": "API 端点（海外版 / 国内版）",
+        "description": "默认海外版 https://www.codebuddy.ai；国内版可设为 https://copilot.tencent.com",
+        "default": "https://www.codebuddy.ai"
+      },
+      "authPath": {
+        "type": "string",
+        "title": "CodeBuddy 登录凭据文件路径",
+        "description": "留空使用默认路径 %LOCALAPPDATA%/CodeBuddyExtension/Data/Public/auth/Tencent-Cloud.coding-copilot.info"
+      },
+      "autoRotate": {
+        "type": "boolean",
+        "title": "启用 CodeBuddy CLI 自动轮换",
+        "description": "后台自动检测各账号积分到期时间，优先将临期积分最高的账号设为 CLI 默认账号",
+        "default": true
+      },
+      "rotateIntervalMinutes": {
+        "type": "number",
+        "title": "自动轮换检测周期（分钟）",
+        "description": "默认每 5 分钟检测一次积分与限额状态",
+        "default": 5
+      },
+      "killCliOnSwitch": {
+        "type": "boolean",
+        "title": "切号时自动终止旧 CLI 进程",
+        "description": "安全结束旧 codebuddy CLI 进程以确保下次执行直接加载新账号登录态",
+        "default": true
+      },
+      "autoReconnect": {
+        "type": "boolean",
+        "title": "切换后自动重连当前会话",
+        "description": "关闭后只提示手动重连",
+        "default": true
+      },
+      "codegDbPath": {
+        "type": "string",
+        "title": "Codeg 数据库路径",
+        "description": "留空使用默认路径 %APPDATA%/app.codeg/codeg.db"
+      }
+    }
+  },
+  "backend": {
+    "command": "${node}",
+    "args": ["--no-warnings", "${pluginDir}/backend/server.mjs"],
+    "env": {
+      "PORT": "${port}",
+      "CODEG_PLUGIN_TOKEN": "${token}",
+      "CODEG_PLUGIN_DATA_DIR": "${dataDir}",
+      "WBS_ENDPOINT": "${config.endpoint}",
+      "WBS_AUTH_PATH": "${config.authPath}",
+      "WBS_AUTO_ROTATE": "${config.autoRotate}",
+      "WBS_ROTATE_INTERVAL": "${config.rotateIntervalMinutes}",
+      "WBS_KILL_CLI": "${config.killCliOnSwitch}",
+      "WBS_CODEG_DB_PATH": "${config.codegDbPath}"
+    },
+    "healthcheck": { "path": "/health", "timeoutMs": 10000 },
+    "restart": "on-failure"
+  }
+}
